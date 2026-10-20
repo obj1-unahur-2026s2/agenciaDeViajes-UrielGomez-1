@@ -1,0 +1,193 @@
+import agenciaDeViajes.Cordinador
+import agenciaDeViajes.PackNacional
+import agenciaDeViajes.PackInternacional
+import agenciaDeViajes.PackProvinciales
+import agenciaDeViajes.Pais
+import agenciaDeViajes.Beneficios
+
+describe "Roles de coordinadores" {
+
+    test "permite asignar cualquiera de los roles válidos" {
+        const coordinador = new Cordinador(
+            cantidadDeViajesRealizados = 0,
+            estaMotivado = true,
+            aniosDeExperiencia = 0,
+            rol = "Guía"
+        )
+
+        coordinador.asignarRol("Guía")
+        assert.equals("Guía", coordinador.rol())
+        coordinador.asignarRol("Asistente logístico")
+        assert.equals("Asistente logístico", coordinador.rol())
+        coordinador.asignarRol("Acompañante")
+        assert.equals("Acompañante", coordinador.rol())
+    }
+
+    test "lanza una excepción al asignar un rol inválido" {
+        const coordinador = new Cordinador(
+            cantidadDeViajesRealizados = 0,
+            estaMotivado = true,
+            aniosDeExperiencia = 0,
+            rol = "Guía"
+        )
+
+        assert.throwsException({ coordinador.asignarRol("Piloto") })
+    }
+}
+
+describe "Precio final de packs" {
+
+    const coordinador = new Cordinador(
+        cantidadDeViajesRealizados = 0,
+        estaMotivado = true,
+        aniosDeExperiencia = 0,
+        rol = "Guía"
+    )
+
+    test "un pack nacional sin beneficios vigentes conserva el precio base" {
+        const pack = new PackNacional(
+            diasDeViaje = 5,
+            precioBase = 1000,
+            beneficios = [
+                new Beneficios(tipoDeBeneficio = "Seguro", precio = 100, estaVigente = false)
+            ],
+            cordinador = coordinador,
+            provinciaADestino = new Pais(nombre = "Buenos Aires", cantidadDeEscalas = 0, esLugarDeInteresTuristico = false)
+        )
+
+        assert.equals(1000, pack.precioFinal())
+    }
+
+    test "un pack nacional suma solamente los beneficios vigentes" {
+        const pack = new PackNacional(
+            diasDeViaje = 5,
+            precioBase = 1000,
+            beneficios = [
+                new Beneficios(tipoDeBeneficio = "Traslado", precio = 100, estaVigente = true),
+                new Beneficios(tipoDeBeneficio = "Seguro", precio = 50, estaVigente = true),
+                new Beneficios(tipoDeBeneficio = "VIP", precio = 200, estaVigente = false)
+            ],
+            cordinador = coordinador,
+            provinciaADestino = new Pais(nombre = "Buenos Aires", cantidadDeEscalas = 0, esLugarDeInteresTuristico = false)
+        )
+
+        assert.equals(1150, pack.precioFinal())
+    }
+
+    test "un pack internacional aplica el recargo del 20 por ciento" {
+        const pack = new PackInternacional(
+            diasDeViaje = 10,
+            precioBase = 1000,
+            beneficios = [],
+            cordinador = coordinador,
+            provinciaADestino = new Pais(nombre = "Brasil", cantidadDeEscalas = 1, esLugarDeInteresTuristico = true)
+        )
+
+        assert.equals(1200, pack.precioFinal())
+    }
+}
+
+describe "Calificación de coordinadores" {
+
+    test "un guía motivado con más de 20 viajes está altamente calificado" {
+        const coordinador = new Cordinador(
+            cantidadDeViajesRealizados = 21,
+            estaMotivado = true,
+            aniosDeExperiencia = 0,
+            rol = "Guía"
+        )
+
+        assert.that(coordinador.esAltamenteCalificado())
+    }
+
+    test "un asistente logístico con menos de 3 años no está altamente calificado" {
+        const coordinador = new Cordinador(
+            cantidadDeViajesRealizados = 21,
+            estaMotivado = true,
+            aniosDeExperiencia = 2,
+            rol = "Asistente logístico"
+        )
+
+        assert.notThat(coordinador.esAltamenteCalificado())
+    }
+
+    test "un acompañante con más de 20 viajes está altamente calificado" {
+        const coordinador = new Cordinador(
+            cantidadDeViajesRealizados = 21,
+            estaMotivado = false,
+            aniosDeExperiencia = 0,
+            rol = "Acompañante"
+        )
+
+        assert.that(coordinador.esAltamenteCalificado())
+    }
+}
+
+describe "Packs premium" {
+
+    test "un pack nacional premium tiene más de 10 días y un coordinador calificado" {
+        const coordinador = new Cordinador(
+            cantidadDeViajesRealizados = 21,
+            estaMotivado = true,
+            aniosDeExperiencia = 0,
+            rol = "Guía"
+        )
+        const pack = new PackNacional(
+            diasDeViaje = 11,
+            precioBase = 1000,
+            beneficios = [],
+            cordinador = coordinador,
+            provinciaADestino = new Pais(nombre = "Buenos Aires", cantidadDeEscalas = 0, esLugarDeInteresTuristico = false)
+        )
+
+        assert.that(pack.esPackPremium())
+    }
+
+    test "un pack internacional premium es de interés, dura más de 20 días y no tiene escalas" {
+        const pack = new PackInternacional(
+            diasDeViaje = 21,
+            precioBase = 1000,
+            beneficios = [],
+            cordinador = new Cordinador(
+                cantidadDeViajesRealizados = 0,
+                estaMotivado = false,
+                aniosDeExperiencia = 0,
+                rol = "Acompañante"
+            ),
+            provinciaADestino = new Pais(nombre = "Brasil", cantidadDeEscalas = 0, esLugarDeInteresTuristico = true)
+        )
+
+        assert.that(pack.esPackPremium())
+    }
+}
+
+describe "Packs provinciales" {
+
+    test "un pack provincial premium agrega un 5 por ciento al precio" {
+        const pack = new PackProvinciales(
+            diasDeViaje = 5,
+            precioBase = 1000,
+            beneficios = [
+                new Beneficios(tipoDeBeneficio = "Traslado", precio = 100, estaVigente = true),
+                new Beneficios(tipoDeBeneficio = "VIP", precio = 200, estaVigente = true),
+                new Beneficios(tipoDeBeneficio = "Seguro", precio = 300, estaVigente = true)
+            ],
+            cordinador = new Cordinador(
+                cantidadDeViajesRealizados = 0,
+                estaMotivado = false,
+                aniosDeExperiencia = 0,
+                rol = "Acompañante"
+            ),
+            provinciaADestino = new Pais(
+                nombre = "Córdoba",
+                actividades = ["Senderismo", "Museos", "Gastronomía", "Excursiones"],
+                cantidadDeEscalas = 0,
+                esLugarDeInteresTuristico = false
+            ),
+            cantidadDeCiudadesAVisitar = 6
+        )
+
+        assert.that(pack.esPackPremium())
+        assert.equals(1680, pack.precioFinal())
+    }
+}
